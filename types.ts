@@ -1,10 +1,11 @@
+export type Difficulty = 'easy' | 'medium' | 'hard';
 
 export interface GameSettings {
   gravity: number;
   jumpForce: number;
   pipeSpeed: number;
+  pipeGap: number;
   memeBackground: boolean;
-  scoreVoiceLines: boolean;
 }
 
 export interface Pipe {
@@ -23,4 +24,3 @@ export interface Particle {
   vy: number;
   alpha: number;
 }
-   

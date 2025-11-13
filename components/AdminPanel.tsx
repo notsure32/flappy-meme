@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { GameSettings } from '../types';
 
@@ -71,12 +70,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ settings, setSettings, resetHig
             checked={settings.memeBackground}
             onChange={(e) => handleSettingChange('memeBackground', e.target.checked)}
         />
-        <Toggle
-            label="Score Voice Lines"
-            checked={settings.scoreVoiceLines}
-            onChange={(e) => handleSettingChange('scoreVoiceLines', e.target.checked)}
-        />
-
+       
         <div className="border-t border-gray-600 my-4"></div>
 
         <button
@@ -92,4 +86,3 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ settings, setSettings, resetHig
 };
 
 export default AdminPanel;
-   

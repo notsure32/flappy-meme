@@ -1,42 +1,9 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
-import { GoogleGenAI, Modality } from "@google/genai";
 import Game from './components/Game';
 import StartScreen from './components/StartScreen';
 import AdminPanel from './components/AdminPanel';
-import { GameSettings } from './types';
-import { INITIAL_SETTINGS } from './constants';
-import { removeBackground } from './services/geminiService';
-
-// Audio decoding helpers from Gemini documentation
-function decode(base64: string) {
-  const binaryString = atob(base64);
-  const len = binaryString.length;
-  const bytes = new Uint8Array(len);
-  for (let i = 0; i < len; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
-  return bytes;
-}
-
-async function decodeAudioData(
-  data: Uint8Array,
-  ctx: AudioContext,
-  sampleRate: number,
-  numChannels: number,
-): Promise<AudioBuffer> {
-  const dataInt16 = new Int16Array(data.buffer);
-  const frameCount = dataInt16.length / numChannels;
-  const buffer = ctx.createBuffer(numChannels, frameCount, sampleRate);
-
-  for (let channel = 0; channel < numChannels; channel++) {
-    const channelData = buffer.getChannelData(channel);
-    for (let i = 0; i < frameCount; i++) {
-      channelData[i] = dataInt16[i * numChannels + channel] / 32768.0;
-    }
-  }
-  return buffer;
-}
-
+import { GameSettings, Difficulty } from './types';
+import { INITIAL_SETTINGS, DIFFICULTY_SETTINGS } from './constants';
 
 const App: React.FC = () => {
   const [gameState, setGameState] = useState<'waiting' | 'loading' | 'playing' | 'gameOver'>('waiting');
@@ -58,12 +25,6 @@ const App: React.FC = () => {
   const [loadingMessage, setLoadingMessage] = useState('Loading assets...');
 
   const audioContext = useMemo(() => new (window.AudioContext || (window as any).webkitAudioContext)(), []);
-  const ai = useMemo(() => {
-    if (process.env.API_KEY) {
-      return new GoogleGenAI({ apiKey: process.env.API_KEY });
-    }
-    return null;
-  }, []);
   
   const popSoundBuffer = useMemo(() => {
     const buffer = audioContext.createBuffer(1, audioContext.sampleRate, audioContext.sampleRate);
@@ -155,63 +116,28 @@ const App: React.FC = () => {
     source.start(0);
   }, [audioContext, audioBuffers.death]);
   
-  const playVoiceLine = useCallback(async (text: string) => {
-    if (!ai) {
-        console.warn("Gemini AI not initialized. Skipping voice line. Is API_KEY set?");
-        return;
-    }
-    try {
-        const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash-preview-tts",
-            contents: [{ parts: [{ text }] }],
-            config: {
-                responseModalities: [Modality.AUDIO],
-                speechConfig: {
-                    voiceConfig: {
-                      prebuiltVoiceConfig: { voiceName: 'Kore' },
-                    },
-                },
-            },
-        });
-        const part = response.candidates?.[0]?.content?.parts?.[0];
-        if (part && 'inlineData' in part && part.inlineData) {
-            const base64Audio = part.inlineData.data;
-            const audioBytes = decode(base64Audio);
-            const audioBuffer = await decodeAudioData(audioBytes, audioContext, 24000, 1);
-            
-            const source = audioContext.createBufferSource();
-            source.buffer = audioBuffer;
-            source.connect(audioContext.destination);
-            source.start();
-        }
-    } catch (error) {
-        console.error("Error generating voice line:", error);
-    }
-  }, [ai, audioContext]);
-
   const handleStartGame = async (
     characterFile: File,
     jumpSoundFile: File,
-    deathSoundFile: File
+    deathSoundFile: File,
+    difficulty: Difficulty
   ) => {
-    if (!ai) {
-        alert("Gemini AI is not initialized. Please ensure your API key is set up correctly.");
-        setGameState('waiting');
-        return;
-    }
     setGameState('loading');
     setCurrentScore(0);
     
+    setSettings(prev => ({
+        ...prev,
+        ...DIFFICULTY_SETTINGS[difficulty],
+    }));
+      
     try {
-        setLoadingMessage('AI is removing character background...');
-        const characterWithTransparentBg = await removeBackground(characterFile, ai);
-
+        setLoadingMessage('Preparing assets...');
         setAssets({
-            character: characterWithTransparentBg,
+            character: URL.createObjectURL(characterFile),
             jumpSound: URL.createObjectURL(jumpSoundFile),
             deathSound: URL.createObjectURL(deathSoundFile),
         });
-        // The useEffect for loading audio will now trigger and update the loading message further.
+        // The useEffect for loading audio will now trigger.
     } catch (error) {
         console.error(error);
         alert(error instanceof Error ? error.message : "An unknown error occurred during setup.");
@@ -260,7 +186,7 @@ const App: React.FC = () => {
         <div className="w-full h-full flex flex-col items-center justify-center bg-gray-900 text-white">
           <svg className="animate-spin -ml-1 mr-3 h-10 w-10 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8_0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
           <p className="mt-4 text-lg">{loadingMessage}</p>
         </div>
@@ -279,7 +205,6 @@ const App: React.FC = () => {
           playPopSound={playPopSound}
           playJumpSound={playJumpSound}
           playDeathSound={playDeathSound}
-          playVoiceLine={playVoiceLine}
         />
       )}
 

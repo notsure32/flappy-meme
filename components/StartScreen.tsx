@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react';
+import { Difficulty } from '../types';
 
 interface StartScreenProps {
-  onStart: (characterFile: File, jumpSoundFile: File, deathSoundFile: File) => void;
+  onStart: (characterFile: File, jumpSoundFile: File, deathSoundFile: File, difficulty: Difficulty) => void;
 }
 
 const FileInput: React.FC<{ label: string; accept: string; file: File | null; onChange: (file: File | null) => void; }> = ({ label, accept, file, onChange }) => {
@@ -32,15 +33,18 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStart }) => {
   const [characterFile, setCharacterFile] = useState<File | null>(null);
   const [jumpSoundFile, setJumpSoundFile] = useState<File | null>(null);
   const [deathSoundFile, setDeathSoundFile] = useState<File | null>(null);
+  const [difficulty, setDifficulty] = useState<Difficulty>('medium');
   const [isStarting, setIsStarting] = useState(false);
 
   const canStart = characterFile && jumpSoundFile && deathSoundFile;
+  const audioAcceptTypes = "audio/mp3, audio/wav, audio/ogg, audio/aac";
+  const imageAcceptTypes = "image/png, image/jpeg, image/gif, image/webp";
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (canStart && !isStarting) {
       setIsStarting(true);
-      onStart(characterFile, jumpSoundFile, deathSoundFile);
+      onStart(characterFile, jumpSoundFile, deathSoundFile, difficulty);
     }
   };
 
@@ -51,15 +55,39 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStart }) => {
           Flappy Meme
         </h1>
         <p className="text-center text-gray-300 mt-2 mb-6">
-          Create your own parody game. Upload your assets to begin!
+          Create your own parody game. Upload assets and select a difficulty!
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <FileInput label="Character Face" accept="image/png, image/jpeg" file={characterFile} onChange={setCharacterFile} />
-          <FileInput label="Jump Sound" accept="audio/mpeg, audio/mp3, audio/wav" file={jumpSoundFile} onChange={setJumpSoundFile} />
-          <FileInput label="Death Sound" accept="audio/mpeg, audio/mp3, audio/wav" file={deathSoundFile} onChange={setDeathSoundFile} />
+          <FileInput label="Your Character" accept={imageAcceptTypes} file={characterFile} onChange={setCharacterFile} />
+          <FileInput label="Jump Sound" accept={audioAcceptTypes} file={jumpSoundFile} onChange={setJumpSoundFile} />
+          <FileInput label="Death Sound" accept={audioAcceptTypes} file={deathSoundFile} onChange={setDeathSoundFile} />
           
-          <div className="pt-4">
+          <p className="text-center text-sm text-gray-400 !mt-2">
+            Need sounds?{' '}
+            <a href="https://www.myinstants.com/en/search/" target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:underline">
+              Click to get meme sounds
+            </a>
+          </p>
+
+          <div className="flex justify-center space-x-2 my-2 !mt-4">
+            {(['easy', 'medium', 'hard'] as Difficulty[]).map(d => (
+                <button
+                    key={d}
+                    type="button"
+                    onClick={() => setDifficulty(d)}
+                    className={`px-4 py-2 rounded-lg font-bold transition-all text-lg capitalize w-full ${
+                        difficulty === d 
+                        ? 'bg-purple-600 text-white shadow-lg scale-105' 
+                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                    }`}
+                >
+                    {d}
+                </button>
+            ))}
+          </div>
+          
+          <div className="pt-2">
             <button
               type="submit"
               disabled={!canStart || isStarting}

@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { GameSettings, Pipe as PipeType, Particle } from '../types';
 import {
-  CHARACTER_SIZE, PIPE_WIDTH, GROUND_HEIGHT, PIPE_SPAWN_INTERVAL,
-  GAPS, VOICE_LINES
+  CHARACTER_SIZE, PIPE_WIDTH, GROUND_HEIGHT, PIPE_SPAWN_INTERVAL
 } from '../constants';
 import GameOverScreen from './GameOverScreen';
 import ScoreDisplay from './ScoreDisplay';
@@ -21,12 +20,7 @@ interface GameProps {
   playPopSound: () => void;
   playJumpSound: () => void;
   playDeathSound: () => void;
-  playVoiceLine: (text: string) => void;
 }
-
-const MemeSticker: React.FC<{ src: string, className: string }> = ({ src, className }) => (
-    <img src={src} alt="meme sticker" className={`absolute w-24 h-24 opacity-10 ${className}`} />
-);
 
 const Game: React.FC<GameProps> = ({
   gameState,
@@ -40,10 +34,9 @@ const Game: React.FC<GameProps> = ({
   playPopSound,
   playJumpSound,
   playDeathSound,
-  playVoiceLine,
 }) => {
   const gameContainerRef = useRef<HTMLDivElement>(null);
-  const gameLoopRef = useRef<number>();
+  const gameLoopRef = useRef(0);
   const lastPipeTimeRef = useRef(0);
   
   const [gameStarted, setGameStarted] = useState(false);
@@ -56,13 +49,6 @@ const Game: React.FC<GameProps> = ({
   const [particles, setParticles] = useState<Particle[]>([]);
   const [screenShake, setScreenShake] = useState(false);
   const [flash, setFlash] = useState(false);
-  const [scoreText, setScoreText] = useState("");
-
-  const getPipeGap = useCallback((score: number): number => {
-    if (score < 10) return GAPS.easy;
-    if (score < 30) return GAPS.medium;
-    return GAPS.hard;
-  }, []);
 
   const resetGame = useCallback(() => {
     setGameStarted(false);
@@ -71,7 +57,6 @@ const Game: React.FC<GameProps> = ({
     setPipes([]);
     setCurrentScore(0);
     lastPipeTimeRef.current = 0;
-    setScoreText("");
   }, [setCurrentScore]);
   
   useEffect(() => {
@@ -159,6 +144,11 @@ const Game: React.FC<GameProps> = ({
     if (gameState === 'playing' && gameStarted) {
         const gameWidth = gameContainerRef.current.clientWidth;
 
+        // Dynamic difficulty based on score (leveling)
+        const level = Math.floor(currentScore / 10); // Level up every 10 pipes
+        const currentPipeSpeed = settings.pipeSpeed + level * 0.25;
+        const currentPipeGap = Math.max(150, settings.pipeGap - level * 5); // Minimum gap of 150
+
         // Update particles
         setParticles(prev =>
           prev.map(p => ({
@@ -174,20 +164,14 @@ const Game: React.FC<GameProps> = ({
         setPipes(prevPipes => {
             let newScore = currentScore;
             const updatedPipes = prevPipes
-            .map(pipe => ({ ...pipe, x: pipe.x - settings.pipeSpeed }))
+            .map(pipe => ({ ...pipe, x: pipe.x - currentPipeSpeed }))
             .filter(pipe => pipe.x > -PIPE_WIDTH);
             
             updatedPipes.forEach(pipe => {
                 if (!pipe.passed && pipe.x < charPos.x) {
                     pipe.passed = true;
-                    newScore++;
+                    newScore += 1;
                     playPopSound();
-                    if (settings.scoreVoiceLines && newScore % 5 === 0 && newScore > 0) {
-                      const randomLine = VOICE_LINES[Math.floor(Math.random() * VOICE_LINES.length)];
-                      setScoreText(randomLine);
-                      playVoiceLine(randomLine);
-                      setTimeout(() => setScoreText(""), 2000);
-                    }
                 }
             });
             if(newScore !== currentScore) {
@@ -201,11 +185,10 @@ const Game: React.FC<GameProps> = ({
         // Spawn new pipes
         if (timestamp - lastPipeTimeRef.current > PIPE_SPAWN_INTERVAL) {
           lastPipeTimeRef.current = timestamp;
-          const pipeGap = getPipeGap(currentScore);
-          const gapY = Math.random() * (gameHeight - GROUND_HEIGHT - pipeGap - 100) + 50;
+          const gapY = Math.random() * (gameHeight - GROUND_HEIGHT - currentPipeGap - 100) + 50;
           setPipes(p => [
             ...p,
-            { id: timestamp, x: gameWidth, gapY: gapY, gap: pipeGap, passed: false },
+            { id: timestamp, x: gameWidth, gapY: gapY, gap: currentPipeGap, passed: false },
           ]);
         }
         
@@ -247,7 +230,7 @@ const Game: React.FC<GameProps> = ({
     }
     
     gameLoopRef.current = requestAnimationFrame(gameLoop);
-  }, [charPos.x, charPos.y, charVel, currentScore, gameState, gameStarted, getPipeGap, onGameOver, pipes, playDeathSound, playPopSound, playVoiceLine, setCurrentScore, settings]);
+  }, [charPos.x, charPos.y, charVel, currentScore, gameState, gameStarted, onGameOver, pipes, playDeathSound, playPopSound, setCurrentScore, settings]);
 
 
   useEffect(() => {
@@ -269,12 +252,6 @@ const Game: React.FC<GameProps> = ({
       ref={gameContainerRef}
       className={`relative w-full h-full bg-gradient-to-b from-purple-800 to-blue-900 overflow-hidden ${screenShake ? 'animate-shake' : ''}`}
     >
-        { settings.memeBackground && <>
-            <MemeSticker src="https://i.imgur.com/vAbB4gH.png" className="top-1/4 left-1/4 animate-float1" />
-            <MemeSticker src="https://i.imgur.com/G5G3T5D.png" className="bottom-1/4 right-1/4 animate-float2" />
-            <MemeSticker src="https://i.imgur.com/JjYy7xM.png" className="top-10 right-10 animate-float3" />
-        </>}
-
       {/* Score */}
       <ScoreDisplay currentScore={currentScore} highScore={highScore} isPopping={isScorePopping} />
 
@@ -287,7 +264,6 @@ const Game: React.FC<GameProps> = ({
             src={assets.character}
             alt="character"
             className="w-full h-full object-contain filter drop-shadow-[0_0_5px_rgba(255,255,255,0.7)]"
-            style={{ imageRendering: 'pixelated' }}
         />
         {isJumping && <div className="absolute inset-0 rounded-full bg-white opacity-50 animate-ping"></div>}
       </div>
@@ -305,35 +281,21 @@ const Game: React.FC<GameProps> = ({
       {pipes.map(pipe => (
         <div key={pipe.id} style={{ transform: `translateX(${pipe.x}px)` }} className="absolute top-0 h-full z-10">
           <div
-            className="absolute top-0 bg-gradient-to-b from-gray-600 to-gray-800 border-4 border-gray-900"
-            style={{ width: PIPE_WIDTH, height: pipe.gapY, backgroundImage: 'url(https://www.transparenttextures.com/patterns/metal-bare.png)' }}
-          >
-             <div className="absolute inset-0 bg-[url('https://i.imgur.com/vAbB4gH.png')] bg-repeat bg-[length:40px_40px] opacity-10"></div>
-          </div>
+            className="absolute top-0 bg-gradient-to-b from-green-600 to-green-800 border-4 border-green-900 rounded-b-lg"
+            style={{ width: PIPE_WIDTH, height: pipe.gapY }}
+          />
           <div
-            className="absolute bg-gradient-to-b from-gray-600 to-gray-800 border-4 border-gray-900"
-            style={{ top: pipe.gapY + pipe.gap, width: PIPE_WIDTH, bottom: GROUND_HEIGHT, backgroundImage: 'url(https://www.transparenttextures.com/patterns/metal-bare.png)' }}
-          >
-            <div className="absolute inset-0 bg-[url('https://i.imgur.com/G5G3T5D.png')] bg-repeat bg-[length:40px_40px] opacity-10"></div>
-          </div>
+            className="absolute bg-gradient-to-t from-green-600 to-green-800 border-4 border-green-900 rounded-t-lg"
+            style={{ top: pipe.gapY + pipe.gap, width: PIPE_WIDTH, bottom: GROUND_HEIGHT }}
+          />
         </div>
       ))}
       
-      {/* Voice Line Text */}
-      {scoreText && (
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50">
-          <p className="font-bangers text-5xl text-white text-stroke-black animate-ping">{scoreText}</p>
-        </div>
-      )}
-
       {/* Ground */}
       <div
-        className="absolute bottom-0 left-0 w-full z-30"
+        className="absolute bottom-0 left-0 w-full z-30 bg-gradient-to-t from-[#6B4226] to-[#8E562E]"
         style={{
           height: GROUND_HEIGHT,
-          backgroundImage: 'url(https://i.imgur.com/PqfYNoa.png)',
-          backgroundRepeat: 'repeat-x',
-          backgroundSize: 'auto 100%',
         }}
       />
       
