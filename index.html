@@ -1,0 +1,69 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Flappy Meme Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bangers&display=swap" rel="stylesheet">
+    <style>
+      body {
+        overscroll-behavior: none;
+        touch-action: none;
+      }
+      .font-bangers {
+        font-family: 'Bangers', cursive;
+      }
+      @keyframes bob {
+        0%, 100% { transform: translateY(-5px); }
+        50% { transform: translateY(5px); }
+      }
+      .animate-bob {
+        animation: bob 3s ease-in-out infinite;
+      }
+      @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-5px); }
+        50% { transform: translateX(5px); }
+        75% { transform: translateX(-5px); }
+      }
+      .animate-shake {
+        animation: shake 0.3s ease-in-out;
+      }
+      @keyframes score-pop {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.2); }
+      }
+      .animate-score-pop {
+        animation: score-pop 0.3s ease-in-out;
+      }
+      @keyframes float {
+        0% { transform: translate(0, 0); }
+        50% { transform: translate(10px, 15px); }
+        100% { transform: translate(0, 0); }
+      }
+      .animate-float1 { animation: float 15s ease-in-out infinite; }
+      .animate-float2 { animation: float 18s ease-in-out infinite reverse; }
+      .animate-float3 { animation: float 20s ease-in-out infinite; }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.29.0"
+  }
+}
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
+   
